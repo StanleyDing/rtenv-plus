@@ -1,41 +1,41 @@
 TARGET = main
 .DEFAULT_GOAL = all
 
+# Compiler configurations
 CROSS_COMPILE ?= arm-none-eabi-
 CC := $(CROSS_COMPILE)gcc
-CFLAGS = -fno-common -ffreestanding -O0 \
+
+# Hardware setup
+CPU = cortex-m4
+CFLAGS = -mcpu=$(CPU) -march=armv7e-m -mtune=cortex-m4
+CFLAGS += -mlittle-endian -mthumb
+
+CFLAGS += -fno-common -ffreestanding -O0 \
          -gdwarf-2 -g3 -Wall -Werror \
-         -mcpu=cortex-m3 -mthumb \
          -Wl,-Tmain.ld -nostartfiles \
          -DUSER_NAME=\"$(USER)\"
 
-ARCH = CM3
-VENDOR = ST
-PLAT = STM32F10x
+# set the path to STM32F429I-Discovery firmware package
+STDP ?= ../STM32F429I-Discovery_FW_V1.0.1
 
-LIBDIR = .
-CMSIS_LIB=$(LIBDIR)/libraries/CMSIS/$(ARCH)
-STM32_LIB=$(LIBDIR)/libraries/STM32F10x_StdPeriph_Driver
-
-CMSIS_PLAT_SRC = $(CMSIS_LIB)/DeviceSupport/$(VENDOR)/$(PLAT)
-
+CMSIS_LIB=$(STDP)/Libraries/CMSIS
+CMSIS_LIB_DEVICE=$(CMSIS_LIB)/Device/ST/STM32F4xx
+STM32_LIB=$(STDP)/Libraries/STM32f4xx_StdPeriph_Driver
 
 OUTDIR = build
 SRCDIR = src \
-         $(CMSIS_LIB)/CoreSupport \
-         $(STM32_LIB)/src \
-         $(CMSIS_PLAT_SRC)
+         $(STM32_LIB)/src
 INCDIR = include \
-         $(CMSIS_LIB)/CoreSupport \
-         $(STM32_LIB)/inc \
-         $(CMSIS_PLAT_SRC)
+         $(CMSIS_LIB)/Include \
+         $(CMSIS_LIB_DEVICE)/Include \
+         $(STM32_LIB)/inc
 INCLUDES = $(addprefix -I,$(INCDIR))
 DATDIR = data
 TOOLDIR = tool
 
 SRC = $(wildcard $(addsuffix /*.c,$(SRCDIR))) \
       $(wildcard $(addsuffix /*.s,$(SRCDIR))) \
-      $(CMSIS_PLAT_SRC)/startup/gcc_ride7/startup_stm32f10x_md.s
+      $(CMSIS_LIB_DEVICE)/Source/Templates/gcc_ride7/startup_stm32f429_439xx.s
 OBJ := $(addprefix $(OUTDIR)/,$(patsubst %.s,%.o,$(SRC:.c=.o)))
 DEP = $(OBJ:.o=.o.d)
 DAT =
