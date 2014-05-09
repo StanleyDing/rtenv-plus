@@ -20,7 +20,7 @@ STDP ?= ../STM32F429I-Discovery_FW_V1.0.1
 
 CMSIS_LIB=$(STDP)/Libraries/CMSIS
 CMSIS_LIB_DEVICE=$(CMSIS_LIB)/Device/ST/STM32F4xx
-STM32_LIB=$(STDP)/Libraries/STM32f4xx_StdPeriph_Driver
+STM32_LIB=$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver
 
 OUTDIR = build
 SRCDIR = src \
