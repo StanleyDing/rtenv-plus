@@ -2,10 +2,10 @@
 
 	.type	SysTick_Handler, %function
 	.global SysTick_Handler
-	.type	USART2_IRQHandler, %function
-	.global USART2_IRQHandler
+	.type	USART1_IRQHandler, %function
+	.global USART1_IRQHandler
 SysTick_Handler:
-USART2_IRQHandler:
+USART1_IRQHandler:
 	mrs r0, psp
 	stmdb r0!, {r7}
 
@@ -42,13 +42,16 @@ activate:
 	mrs ip, psr
 	push {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}
 	
+        ldmia r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}
+        ldmia r0!, {r7}
+
 	/* switch to process stack pointer */
 	msr psp, r0
 	mov r0, #3
 	msr control, r0
 	
-	/* load user state */
+	/* load user state 
 	pop {r4, r5, r6, r7, r8, r9, r10, r11, lr}
-	pop {r7}
+	pop {r7} */
 
 	bx lr
