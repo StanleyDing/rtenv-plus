@@ -35,6 +35,7 @@
 /*Global Variables*/
 char next_line[3] = {'\n','\r','\0'};
 size_t task_count = 0;
+size_t current_task = 0;
 char cmd[HISTORY_COUNT][CMDBUF_SIZE];
 int cur_his=0;
 int fdout;
@@ -134,31 +135,6 @@ void serialin(USART_TypeDef* uart, unsigned int intr)
 	}
 }
 
-void greeting()
-{
-	int fdout = open("/dev/tty0/out", 0);
-	char *string = "Hello, World!\n";
-	while (*string) {
-		write(fdout, string, 1);
-		string++;
-	}
-}
-
-void echo()
-{
-	int fdout;
-	int fdin;
-	char c;
-
-	fdout = open("/dev/tty0/out", 0);
-	fdin = open("/dev/tty0/in", 0);
-
-	while (1) {
-		read(fdin, &c, 1);
-		write(fdout, &c, 1);
-	}
-}
-
 void rs232_xmit_msg_task()
 {
 	int fdout;
@@ -185,74 +161,6 @@ void rs232_xmit_msg_task()
 	}
 }
 
-void queue_str_task(const char *str, int delay)
-{
-	int fdout = mq_open("/tmp/mqueue/out", 0);
-	int msg_len = strlen(str) + 1;
-
-	while (1) {
-		/* Post the message.  Keep on trying until it is successful. */
-		write(fdout, str, msg_len);
-
-		/* Wait. */
-		sleep(delay);
-	}
-}
-
-void queue_str_task1()
-{
-	queue_str_task("Hello 1\n", 200);
-}
-
-void queue_str_task2()
-{
-	queue_str_task("Hello 2\n", 50);
-}
-
-void serial_readwrite_task()
-{
-	int fdout;
-	int fdin;
-	char str[100];
-	char ch;
-	int curr_char;
-	int done;
-
-	fdout = mq_open("/tmp/mqueue/out", 0);
-	fdin = open("/dev/tty0/in", 0);
-
-	/* Prepare the response message to be queued. */
-	memcpy(str, "Got:", 4);
-
-	while (1) {
-		curr_char = 4;
-		done = 0;
-		do {
-			/* Receive a byte from the RS232 port (this call will
-			 * block). */
-			read(fdin, &ch, 1);
-
-			/* If the byte is an end-of-line type character, then
-			 * finish the string and inidcate we are done.
-			 */
-			if (curr_char >= 98 || ch == '\r' || ch == '\n') {
-				str[curr_char] = '\n';
-				str[curr_char+1] = '\0';
-				done = -1;
-			}
-			/* Otherwise, add the character to the
-			 * response string. */
-			else
-				str[curr_char++] = ch;
-		} while (!done);
-
-		/* Once we are done building the response string, queue the
-		 * response to be sent to the RS232 port.
-		 */
-		write(fdout, str, curr_char+1 + 1);
-	}
-}
-
 void serial_test_task()
 {
 	char put_ch[2]={'0','\0'};
@@ -261,6 +169,7 @@ void serial_test_task()
 	char *p = NULL;
 
 	fdout = mq_open("/tmp/mqueue/out", 0);
+	//fdout = open("/dev/tty0/out", 0);
 	fdin = open("/dev/tty0/in", 0);
 
 	for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
@@ -711,8 +620,8 @@ void show_xxd(int argc, char *argv[])
 void first()
 {
 	if (!fork()) setpriority(0, 0), pathserver();
-	//if (!fork()) setpriority(0, 0), romdev_driver();
-	//if (!fork()) setpriority(0, 0), romfs_server();
+	if (!fork()) setpriority(0, 0), romdev_driver();
+	if (!fork()) setpriority(0, 0), romfs_server();
 	if (!fork()) setpriority(0, 0), serialout(USART1, USART1_IRQn);
 	if (!fork()) setpriority(0, 0), serialin(USART1, USART1_IRQn);
 	if (!fork()) rs232_xmit_msg_task();
@@ -766,7 +675,7 @@ int main()
 	struct memory_pool memory_pool;
 	struct event_monitor event_monitor;
 	//size_t task_count = 0;
-	size_t current_task = 0;
+	//size_t current_task = 0;
 	int i;
 	struct list *list;
 	struct task_control_block *task;
@@ -858,7 +767,6 @@ int main()
                         /* There is now one more task */
                         task_count++;
                     }
-                    USART1_puts("fork!\r\n");
                     break;
                 case 0x2: /* getpid */
                     tasks[current_task].stack->r0 = current_task;
@@ -988,6 +896,7 @@ int main()
 
                         if (intr == SysTick_IRQn) {
                             /* Never disable timer. We need it for pre-emption */
+
                             timeup = 1;
                             tick_count++;
                             event_monitor_release(&event_monitor, TIME_EVENT);
@@ -1005,10 +914,8 @@ int main()
 
             /* Check whether to context switch */
             task = &tasks[current_task];
-            if (timeup && ready_list[task->priority].next == &task->list){
-                USART1_puts("timeup!\r\n");
+            if (timeup && ready_list[task->priority].next == &task->list)
                 list_push(&ready_list[task->priority], &tasks[current_task].list);
-            }
 
             /* Select next TASK_READY task */
             for (i = 0; list_empty(&ready_list[i]); i++);
