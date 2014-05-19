@@ -15,12 +15,10 @@ CFLAGS += -fno-common -ffreestanding -O0 \
          -Wl,-Tmain.ld -nostartfiles \
          -DUSER_NAME=\"$(USER)\"
 
-# set the path to STM32F429I-Discovery firmware package
-STDP ?= ../STM32F429I-Discovery_FW_V1.0.1
 
-CMSIS_LIB=$(STDP)/Libraries/CMSIS
+CMSIS_LIB=Libraries/CMSIS
 CMSIS_LIB_DEVICE=$(CMSIS_LIB)/Device/ST/STM32F4xx
-STM32_LIB=$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver
+STM32_LIB=Libraries/STM32F4xx_StdPeriph_Driver
 
 OUTDIR = build
 SRCDIR = src \
@@ -35,7 +33,8 @@ TOOLDIR = tool
 
 SRC = $(wildcard $(addsuffix /*.c,$(SRCDIR))) \
       $(wildcard $(addsuffix /*.s,$(SRCDIR))) \
-      $(CMSIS_LIB_DEVICE)/Source/Templates/gcc_ride7/startup_stm32f429_439xx.s
+      $(CMSIS_LIB_DEVICE)/Source/Templates/gcc_ride7/startup_stm32f429_439xx.s \
+      $(CMSIS_LIB_DEVICE)/Source/Templates/system_stm32f4xx.c
 OBJ := $(addprefix $(OUTDIR)/,$(patsubst %.s,%.o,$(SRC:.c=.o)))
 DEP = $(OBJ:.o=.o.d)
 DAT =
@@ -72,5 +71,8 @@ $(OUTDIR)/%.o: %.s
 
 clean:
 	rm -rf $(OUTDIR)
+
+flash:
+	st-flash write $(OUTDIR)/$(TARGET).bin 0x8000000
 
 -include $(DEP)

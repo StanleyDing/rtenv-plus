@@ -4,8 +4,11 @@ DAT += $(OUTDIR)/$(DATDIR)/rom0.o
 $(OUTDIR)/$(ROMDIR).o: $(OUTDIR)/$(ROMDIR).bin
 	@mkdir -p $(dir $@)
 	@echo "    OBJCOPY "$@
-	@$(CROSS_COMPILE)objcopy -I binary -O elf32-littlearm -B arm \
-		--prefix-sections '.rom' $< $@
+	#@$(CROSS_COMPILE)objcopy -I binary -O elf32-littlearm -B arm \
+		#--prefix-sections '.rom' $< $@
+	@echo '' | $(CROSS_COMPILE)gcc -x c - -c -o $@
+	@$(CROSS_COMPILE)objcopy -j .ARM.attributes \
+		--add-section .rom.data=$< $@
 
 $(OUTDIR)/$(ROMDIR).bin: $(ROMDIR) $(OUTDIR)/$(TOOLDIR)/mkromfs
 	@mkdir -p $(dir $@)
