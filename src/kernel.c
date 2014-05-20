@@ -682,7 +682,7 @@ int main()
 	int timeup;
 	unsigned int tick_count = 0;
 
-	SysTick_Config(configCPU_CLOCK_HZ);
+	SysTick_Config(configCPU_CLOCK_HZ / configTICK_RATE_HZ);
 
 	init_rs232();
 
