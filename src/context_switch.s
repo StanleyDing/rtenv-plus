@@ -6,6 +6,8 @@
 	.global USART1_IRQHandler
 SysTick_Handler:
 USART1_IRQHandler:
+        cpsid i
+        
 	mrs r0, psp
 	stmdb r0!, {r7}
 
@@ -53,5 +55,6 @@ activate:
 	/* load user state 
 	pop {r4, r5, r6, r7, r8, r9, r10, r11, lr}
 	pop {r7} */
+        cpsie i
 
 	bx lr
