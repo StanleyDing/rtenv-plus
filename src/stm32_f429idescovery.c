@@ -56,3 +56,4 @@ void init_rs232(void)
     GPIO_Configuration();
     USART1_Configuration();
 }
+

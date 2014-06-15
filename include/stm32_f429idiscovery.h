@@ -23,4 +23,6 @@ void enable_rs232_interrupts(void);
 
 void enable_rs232(void);
 
+void ADC3_CH13_DMA_Config(void);
+
 #endif /* __STM32_P103_H */

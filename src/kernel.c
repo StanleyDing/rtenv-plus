@@ -2,6 +2,8 @@
 #include "kernel.h"
 #include "stm32f4xx.h"
 #include "stm32_f429idiscovery.h"
+#include "stm32f4xx_adc.h"
+#include "stm32f4xx_dma.h"
 //#include "stm32f10x.h"
 //#include "stm32_p103.h"
 #include "RTOSConfig.h"
@@ -58,35 +60,35 @@ void show_xxd(int argc, char *argv[]);
 
 /* Enumeration for command types. */
 enum {
-	CMD_ECHO = 0,
-	CMD_EXPORT,
-	CMD_HELP,
-	CMD_HISTORY,
-	CMD_MAN,
-	CMD_PS,
-	CMD_XXD,
-	CMD_COUNT
+    CMD_ECHO = 0,
+    CMD_EXPORT,
+    CMD_HELP,
+    CMD_HISTORY,
+    CMD_MAN,
+    CMD_PS,
+    CMD_XXD,
+    CMD_COUNT
 } CMD_TYPE;
 /* Structure for command handler. */
 typedef struct {
-	char cmd[MAX_CMDNAME + 1];
-	void (*func)(int, char**);
-	char description[MAX_CMDHELP + 1];
+    char cmd[MAX_CMDNAME + 1];
+    void (*func)(int, char**);
+    char description[MAX_CMDHELP + 1];
 } hcmd_entry;
 const hcmd_entry cmd_data[CMD_COUNT] = {
-	[CMD_ECHO] = {.cmd = "echo", .func = show_echo, .description = "Show words you input."},
-	[CMD_EXPORT] = {.cmd = "export", .func = export_envvar, .description = "Export environment variables."},
-	[CMD_HELP] = {.cmd = "help", .func = show_cmd_info, .description = "List all commands you can use."},
-	[CMD_HISTORY] = {.cmd = "history", .func = show_history, .description = "Show latest commands entered."}, 
-	[CMD_MAN] = {.cmd = "man", .func = show_man_page, .description = "Manual pager."},
-	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."},
-	[CMD_XXD] = {.cmd = "xxd", .func = show_xxd, .description = "Make a hexdump."},
+    [CMD_ECHO] = {.cmd = "echo", .func = show_echo, .description = "Show words you input."},
+    [CMD_EXPORT] = {.cmd = "export", .func = export_envvar, .description = "Export environment variables."},
+    [CMD_HELP] = {.cmd = "help", .func = show_cmd_info, .description = "List all commands you can use."},
+    [CMD_HISTORY] = {.cmd = "history", .func = show_history, .description = "Show latest commands entered."}, 
+    [CMD_MAN] = {.cmd = "man", .func = show_man_page, .description = "Manual pager."},
+    [CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."},
+    [CMD_XXD] = {.cmd = "xxd", .func = show_xxd, .description = "Make a hexdump."},
 };
 
 /* Structure for environment variables. */
 typedef struct {
-	char name[MAX_ENVNAME + 1];
-	char value[MAX_ENVVALUE + 1];
+    char name[MAX_ENVNAME + 1];
+    char value[MAX_ENVVALUE + 1];
 } evar_entry;
 evar_entry env_var[MAX_ENVCOUNT];
 int env_count = 0;
@@ -119,390 +121,390 @@ void serialout(USART_TypeDef* uart, unsigned int intr)
 
 void serialin(USART_TypeDef* uart, unsigned int intr)
 {
-	int fd;
-	char c;
-	mkfifo("/dev/tty0/in", 0);
-	fd = open("/dev/tty0/in", 0);
+    int fd;
+    char c;
+    mkfifo("/dev/tty0/in", 0);
+    fd = open("/dev/tty0/in", 0);
 
     USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
 
-	while (1) {
-		interrupt_wait(intr);
-		if (USART_GetFlagStatus(uart, USART_FLAG_RXNE) == SET) {
-			c = USART_ReceiveData(uart);
-			write(fd, &c, 1);
-		}
-	}
+    while (1) {
+        interrupt_wait(intr);
+        if (USART_GetFlagStatus(uart, USART_FLAG_RXNE) == SET) {
+            c = USART_ReceiveData(uart);
+            write(fd, &c, 1);
+        }
+    }
 }
 
 void rs232_xmit_msg_task()
 {
-	int fdout;
-	int fdin;
-	char str[100];
-	int curr_char;
+    int fdout;
+    int fdin;
+    char str[100];
+    int curr_char;
 
-	fdout = open("/dev/tty0/out", 0);
-	fdin = mq_open("/tmp/mqueue/out", O_CREAT);
-	setpriority(0, PRIORITY_DEFAULT - 2);
+    fdout = open("/dev/tty0/out", 0);
+    fdin = mq_open("/tmp/mqueue/out", O_CREAT);
+    setpriority(0, PRIORITY_DEFAULT - 2);
 
-	while (1) {
-		/* Read from the queue.  Keep trying until a message is
-		 * received.  This will block for a period of time (specified
-		 * by portMAX_DELAY). */
-		read(fdin, str, 100);
+    while (1) {
+        /* Read from the queue.  Keep trying until a message is
+         * received.  This will block for a period of time (specified
+         * by portMAX_DELAY). */
+        read(fdin, str, 100);
 
-		/* Write each character of the message to the RS232 port. */
-		curr_char = 0;
-		while (str[curr_char] != '\0') {
-			write(fdout, &str[curr_char], 1);
-			curr_char++;
-		}
-	}
+        /* Write each character of the message to the RS232 port. */
+        curr_char = 0;
+        while (str[curr_char] != '\0') {
+            write(fdout, &str[curr_char], 1);
+            curr_char++;
+        }
+    }
 }
 
 void serial_test_task()
 {
-	char put_ch[2]={'0','\0'};
-	char hint[] =  USER_NAME "@" USER_NAME "-STM32:~$ ";
-	int hint_length = sizeof(hint);
-	char *p = NULL;
+    char put_ch[2]={'0','\0'};
+    char hint[] =  USER_NAME "@" USER_NAME "-STM32:~$ ";
+    int hint_length = sizeof(hint);
+    char *p = NULL;
 
-	fdout = mq_open("/tmp/mqueue/out", 0);
-	//fdout = open("/dev/tty0/out", 0);
-	fdin = open("/dev/tty0/in", 0);
+    fdout = mq_open("/tmp/mqueue/out", 0);
+    //fdout = open("/dev/tty0/out", 0);
+    fdin = open("/dev/tty0/in", 0);
 
-	for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
-		p = cmd[cur_his];
-		write(fdout, hint, hint_length);
+    for (;; cur_his = (cur_his + 1) % HISTORY_COUNT) {
+        p = cmd[cur_his];
+        write(fdout, hint, hint_length);
 
-		while (1) {
-			read(fdin, put_ch, 1);
+        while (1) {
+            read(fdin, put_ch, 1);
 
-			if (put_ch[0] == '\r' || put_ch[0] == '\n') {
-				*p = '\0';
-				write(fdout, next_line, 3);
-				break;
-			}
-			else if (put_ch[0] == 127 || put_ch[0] == '\b') {
-				if (p > cmd[cur_his]) {
-					p--;
-					write(fdout, "\b \b", 4);
-				}
-			}
-			else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {
-				*p++ = put_ch[0];
-				write(fdout, put_ch, 2);
-			}
-		}
-		check_keyword();	
-	}
+            if (put_ch[0] == '\r' || put_ch[0] == '\n') {
+                *p = '\0';
+                write(fdout, next_line, 3);
+                break;
+            }
+            else if (put_ch[0] == 127 || put_ch[0] == '\b') {
+                if (p > cmd[cur_his]) {
+                    p--;
+                    write(fdout, "\b \b", 4);
+                }
+            }
+            else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {
+                *p++ = put_ch[0];
+                write(fdout, put_ch, 2);
+            }
+        }
+        check_keyword();	
+    }
 }
 
 /* Split command into tokens. */
 char *cmdtok(char *cmd)
 {
-	static char *cur = NULL;
-	static char *end = NULL;
-	if (cmd) {
-		char quo = '\0';
-		cur = cmd;
-		for (end = cmd; *end; end++) {
-			if (*end == '\'' || *end == '\"') {
-				if (quo == *end)
-					quo = '\0';
-				else if (quo == '\0')
-					quo = *end;
-				*end = '\0';
-			}
-			else if (isspace((int)*end) && !quo)
-				*end = '\0';
-		}
-	}
-	else
-		for (; *cur; cur++)
-			;
+    static char *cur = NULL;
+    static char *end = NULL;
+    if (cmd) {
+        char quo = '\0';
+        cur = cmd;
+        for (end = cmd; *end; end++) {
+            if (*end == '\'' || *end == '\"') {
+                if (quo == *end)
+                    quo = '\0';
+                else if (quo == '\0')
+                    quo = *end;
+                *end = '\0';
+            }
+            else if (isspace((int)*end) && !quo)
+                *end = '\0';
+        }
+    }
+    else
+        for (; *cur; cur++)
+            ;
 
-	for (; *cur == '\0'; cur++)
-		if (cur == end) return NULL;
-	return cur;
+    for (; *cur == '\0'; cur++)
+        if (cur == end) return NULL;
+    return cur;
 }
 
 void check_keyword()
 {
-	char *argv[MAX_ARGC + 1] = {NULL};
-	char cmdstr[CMDBUF_SIZE];
-	int argc = 1;
-	int i;
+    char *argv[MAX_ARGC + 1] = {NULL};
+    char cmdstr[CMDBUF_SIZE];
+    int argc = 1;
+    int i;
 
-	find_events();
-	fill_arg(cmdstr, cmd[cur_his]);
-	argv[0] = cmdtok(cmdstr);
-	if (!argv[0])
-		return;
+    find_events();
+    fill_arg(cmdstr, cmd[cur_his]);
+    argv[0] = cmdtok(cmdstr);
+    if (!argv[0])
+        return;
 
-	while (1) {
-		argv[argc] = cmdtok(NULL);
-		if (!argv[argc])
-			break;
-		argc++;
-		if (argc >= MAX_ARGC)
-			break;
-	}
+    while (1) {
+        argv[argc] = cmdtok(NULL);
+        if (!argv[argc])
+            break;
+        argc++;
+        if (argc >= MAX_ARGC)
+            break;
+    }
 
-	for (i = 0; i < CMD_COUNT; i++) {
-		if (!strcmp(argv[0], cmd_data[i].cmd)) {
-			cmd_data[i].func(argc, argv);
-			break;
-		}
-	}
-	if (i == CMD_COUNT) {
-		write(fdout, argv[0], strlen(argv[0]) + 1);
-		write(fdout, ": command not found", 20);
-		write(fdout, next_line, 3);
-	}
+    for (i = 0; i < CMD_COUNT; i++) {
+        if (!strcmp(argv[0], cmd_data[i].cmd)) {
+            cmd_data[i].func(argc, argv);
+            break;
+        }
+    }
+    if (i == CMD_COUNT) {
+        write(fdout, argv[0], strlen(argv[0]) + 1);
+        write(fdout, ": command not found", 20);
+        write(fdout, next_line, 3);
+    }
 }
 
 void find_events()
 {
-	char buf[CMDBUF_SIZE];
-	char *p = cmd[cur_his];
-	char *q;
-	int i;
+    char buf[CMDBUF_SIZE];
+    char *p = cmd[cur_his];
+    char *q;
+    int i;
 
-	for (; *p; p++) {
-		if (*p == '!') {
-			q = p;
-			while (*q && !isspace((int)*q))
-				q++;
-			for (i = cur_his + HISTORY_COUNT - 1; i > cur_his; i--) {
-				if (!strncmp(cmd[i % HISTORY_COUNT], p + 1, q - p - 1)) {
-					strcpy(buf, q);
-					strcpy(p, cmd[i % HISTORY_COUNT]);
-					p += strlen(p);
-					strcpy(p--, buf);
-					break;
-				}
-			}
-		}
-	}
+    for (; *p; p++) {
+        if (*p == '!') {
+            q = p;
+            while (*q && !isspace((int)*q))
+                q++;
+            for (i = cur_his + HISTORY_COUNT - 1; i > cur_his; i--) {
+                if (!strncmp(cmd[i % HISTORY_COUNT], p + 1, q - p - 1)) {
+                    strcpy(buf, q);
+                    strcpy(p, cmd[i % HISTORY_COUNT]);
+                    p += strlen(p);
+                    strcpy(p--, buf);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 char *find_envvar(const char *name)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < env_count; i++) {
-		if (!strcmp(env_var[i].name, name))
-			return env_var[i].value;
-	}
+    for (i = 0; i < env_count; i++) {
+        if (!strcmp(env_var[i].name, name))
+            return env_var[i].value;
+    }
 
-	return NULL;
+    return NULL;
 }
 
 /* Fill in entire value of argument. */
 int fill_arg(char *const dest, const char *argv)
 {
-	char env_name[MAX_ENVNAME + 1];
-	char *buf = dest;
-	char *p = NULL;
+    char env_name[MAX_ENVNAME + 1];
+    char *buf = dest;
+    char *p = NULL;
 
-	for (; *argv; argv++) {
-		if (isalnum((int)*argv) || *argv == '_') {
-			if (p)
-				*p++ = *argv;
-			else
-				*buf++ = *argv;
-		}
-		else { /* Symbols. */
-			if (p) {
-				*p = '\0';
-				p = find_envvar(env_name);
-				if (p) {
-					strcpy(buf, p);
-					buf += strlen(p);
-					p = NULL;
-				}
-			}
-			if (*argv == '$')
-				p = env_name;
-			else
-				*buf++ = *argv;
-		}
-	}
-	if (p) {
-		*p = '\0';
-		p = find_envvar(env_name);
-		if (p) {
-			strcpy(buf, p);
-			buf += strlen(p);
-		}
-	}
-	*buf = '\0';
+    for (; *argv; argv++) {
+        if (isalnum((int)*argv) || *argv == '_') {
+            if (p)
+                *p++ = *argv;
+            else
+                *buf++ = *argv;
+        }
+        else { /* Symbols. */
+            if (p) {
+                *p = '\0';
+                p = find_envvar(env_name);
+                if (p) {
+                    strcpy(buf, p);
+                    buf += strlen(p);
+                    p = NULL;
+                }
+            }
+            if (*argv == '$')
+                p = env_name;
+            else
+                *buf++ = *argv;
+        }
+    }
+    if (p) {
+        *p = '\0';
+        p = find_envvar(env_name);
+        if (p) {
+            strcpy(buf, p);
+            buf += strlen(p);
+        }
+    }
+    *buf = '\0';
 
-	return buf - dest;
+    return buf - dest;
 }
 
 //export
 void export_envvar(int argc, char *argv[])
 {
-	char *found;
-	char *value;
-	int i;
+    char *found;
+    char *value;
+    int i;
 
-	for (i = 1; i < argc; i++) {
-		value = argv[i];
-		while (*value && *value != '=')
-			value++;
-		if (*value)
-			*value++ = '\0';
-		found = find_envvar(argv[i]);
-		if (found)
-			strcpy(found, value);
-		else if (env_count < MAX_ENVCOUNT) {
-			strcpy(env_var[env_count].name, argv[i]);
-			strcpy(env_var[env_count].value, value);
-			env_count++;
-		}
-	}
+    for (i = 1; i < argc; i++) {
+        value = argv[i];
+        while (*value && *value != '=')
+            value++;
+        if (*value)
+            *value++ = '\0';
+        found = find_envvar(argv[i]);
+        if (found)
+            strcpy(found, value);
+        else if (env_count < MAX_ENVCOUNT) {
+            strcpy(env_var[env_count].name, argv[i]);
+            strcpy(env_var[env_count].value, value);
+            env_count++;
+        }
+    }
 }
 
 //ps
 void show_task_info(int argc, char* argv[])
 {
-	char ps_message[]="PID STATUS PRIORITY";
-	int ps_message_length = sizeof(ps_message);
-	int task_i;
+    char ps_message[]="PID STATUS PRIORITY";
+    int ps_message_length = sizeof(ps_message);
+    int task_i;
 
-	write(fdout, &ps_message , ps_message_length);
-	write(fdout, &next_line , 3);
+    write(fdout, &ps_message , ps_message_length);
+    write(fdout, &next_line , 3);
 
-	for (task_i = 0; task_i < task_count; task_i++) {
-		char task_info_pid[2];
-		char task_info_status[2];
-		char task_info_priority[3];
+    for (task_i = 0; task_i < task_count; task_i++) {
+        char task_info_pid[2];
+        char task_info_status[2];
+        char task_info_priority[3];
 
-		task_info_pid[0]='0'+tasks[task_i].pid;
-		task_info_pid[1]='\0';
-		task_info_status[0]='0'+tasks[task_i].status;
-		task_info_status[1]='\0';			
+        task_info_pid[0]='0'+tasks[task_i].pid;
+        task_info_pid[1]='\0';
+        task_info_status[0]='0'+tasks[task_i].status;
+        task_info_status[1]='\0';			
 
-		itoa(tasks[task_i].priority, task_info_priority, 10);
+        itoa(tasks[task_i].priority, task_info_priority, 10);
 
-		write(fdout, &task_info_pid , 2);
-		write_blank(3);
-			write(fdout, &task_info_status , 2);
-		write_blank(5);
-		write(fdout, &task_info_priority , 3);
+        write(fdout, &task_info_pid , 2);
+        write_blank(3);
+        write(fdout, &task_info_status , 2);
+        write_blank(5);
+        write(fdout, &task_info_priority , 3);
 
-		write(fdout, &next_line , 3);
-	}
+        write(fdout, &next_line , 3);
+    }
 }
 
 //this function helps to show int
 
 void itoa(int n, char *dst, int base)
 {
-	char buf[33] = {0};
-	char *p = &buf[32];
+    char buf[33] = {0};
+    char *p = &buf[32];
 
-	if (n == 0)
-		*--p = '0';
-	else {
-		unsigned int num = (base == 10 && num < 0) ? -n : n;
+    if (n == 0)
+        *--p = '0';
+    else {
+        unsigned int num = (base == 10 && num < 0) ? -n : n;
 
-		for (; num; num/=base)
-			*--p = "0123456789ABCDEF" [num % base];
-		if (base == 10 && n < 0)
-			*--p = '-';
-	}
+        for (; num; num/=base)
+            *--p = "0123456789ABCDEF" [num % base];
+        if (base == 10 && n < 0)
+            *--p = '-';
+    }
 
-	strcpy(dst, p);
+    strcpy(dst, p);
 }
 
 //help
 
 void show_cmd_info(int argc, char* argv[])
 {
-	const char help_desp[] = "This system has commands as follow\n\r\0";
-	int i;
+    const char help_desp[] = "This system has commands as follow\n\r\0";
+    int i;
 
-	write(fdout, &help_desp, sizeof(help_desp));
-	for (i = 0; i < CMD_COUNT; i++) {
-		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(fdout, ": ", 3);
-		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-		write(fdout, next_line, 3);
-	}
+    write(fdout, &help_desp, sizeof(help_desp));
+    for (i = 0; i < CMD_COUNT; i++) {
+        write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
+        write(fdout, ": ", 3);
+        write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
+        write(fdout, next_line, 3);
+    }
 }
 
 //echo
 void show_echo(int argc, char* argv[])
 {
-	const int _n = 1; /* Flag for "-n" option. */
-	int flag = 0;
-	int i;
+    const int _n = 1; /* Flag for "-n" option. */
+    int flag = 0;
+    int i;
 
-	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-n"))
-			flag |= _n;
-		else
-			break;
-	}
+    for (i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "-n"))
+            flag |= _n;
+        else
+            break;
+    }
 
-	for (; i < argc; i++) {
-		write(fdout, argv[i], strlen(argv[i]) + 1);
-		if (i < argc - 1)
-			write(fdout, " ", 2);
-	}
+    for (; i < argc; i++) {
+        write(fdout, argv[i], strlen(argv[i]) + 1);
+        if (i < argc - 1)
+            write(fdout, " ", 2);
+    }
 
-	if (~flag & _n)
-		write(fdout, next_line, 3);
+    if (~flag & _n)
+        write(fdout, next_line, 3);
 }
 
 //man
 void show_man_page(int argc, char *argv[])
 {
-	int i;
+    int i;
 
-	if (argc < 2)
-		return;
+    if (argc < 2)
+        return;
 
-	for (i = 0; i < CMD_COUNT && strcmp(cmd_data[i].cmd, argv[1]); i++)
-		;
+    for (i = 0; i < CMD_COUNT && strcmp(cmd_data[i].cmd, argv[1]); i++)
+        ;
 
-	if (i >= CMD_COUNT)
-		return;
+    if (i >= CMD_COUNT)
+        return;
 
-	write(fdout, "NAME: ", 7);
-	write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-	write(fdout, next_line, 3);
-	write(fdout, "DESCRIPTION: ", 14);
-	write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-	write(fdout, next_line, 3);
+    write(fdout, "NAME: ", 7);
+    write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
+    write(fdout, next_line, 3);
+    write(fdout, "DESCRIPTION: ", 14);
+    write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
+    write(fdout, next_line, 3);
 }
 
 void show_history(int argc, char *argv[])
 {
-	int i;
+    int i;
 
-	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
-		if (cmd[i % HISTORY_COUNT][0]) {
-			write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
-			write(fdout, next_line, 3);
-		}
-	}
+    for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
+        if (cmd[i % HISTORY_COUNT][0]) {
+            write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
+            write(fdout, next_line, 3);
+        }
+    }
 }
 
 void write_blank(int blank_num)
 {
-	char blank[] = " ";
-	int blank_count = 0;
+    char blank[] = " ";
+    int blank_count = 0;
 
-	while (blank_count <= blank_num) {
-		write(fdout, blank, sizeof(blank));
-		blank_count++;
-	}
+    while (blank_count <= blank_num) {
+        write(fdout, blank, sizeof(blank));
+        blank_count++;
+    }
 }
 
 char hexof(int dec)
@@ -619,19 +621,19 @@ void show_xxd(int argc, char *argv[])
 
 void first()
 {
-	if (!fork()) setpriority(0, 0), pathserver();
-	if (!fork()) setpriority(0, 0), romdev_driver();
-	if (!fork()) setpriority(0, 0), romfs_server();
-	if (!fork()) setpriority(0, 0), serialout(USART1, USART1_IRQn);
-	if (!fork()) setpriority(0, 0), serialin(USART1, USART1_IRQn);
-	if (!fork()) rs232_xmit_msg_task();
-	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), serial_test_task();
+    if (!fork()) setpriority(0, 0), pathserver();
+    if (!fork()) setpriority(0, 0), romdev_driver();
+    if (!fork()) setpriority(0, 0), romfs_server();
+    if (!fork()) setpriority(0, 0), serialout(USART1, USART1_IRQn);
+    if (!fork()) setpriority(0, 0), serialin(USART1, USART1_IRQn);
+    if (!fork()) rs232_xmit_msg_task();
+    if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), serial_test_task();
 
-	setpriority(0, PRIORITY_LIMIT);
+    setpriority(0, PRIORITY_LIMIT);
 
-	mount("/dev/rom0", "/", ROMFS_TYPE, 0);
+    mount("/dev/rom0", "/", ROMFS_TYPE, 0);
 
-	while(1);
+    while(1);
 }
 
 #define INTR_EVENT(intr) (FILE_LIMIT + (intr) + 15) /* see INTR_LIMIT */
@@ -639,13 +641,13 @@ void first()
 #define TIME_EVENT (FILE_LIMIT + INTR_LIMIT)
 
 int intr_release(struct event_monitor *monitor, int event,
-                 struct task_control_block *task, void *data)
+        struct task_control_block *task, void *data)
 {
     return 1;
 }
 
 int time_release(struct event_monitor *monitor, int event,
-                 struct task_control_block *task, void *data)
+        struct task_control_block *task, void *data)
 {
     int *tick_count = data;
     return task->stack->r0 == *tick_count;
@@ -659,7 +661,6 @@ struct file_request requests[TASK_LIMIT];
 struct list ready_list[PRIORITY_LIMIT + 1];  /* [0 ... 39] */
 struct event events[EVENT_LIMIT];
 
-
 void USART1_puts(char* s)
 {
     while(*s) {
@@ -668,6 +669,10 @@ void USART1_puts(char* s)
         s++;
     }
 }
+
+#define ADC3_DR_ADDRESS     ((uint32_t)0x4001224C)
+__IO uint16_t uhADC3ConvertedValue = 0;
+__IO uint32_t uwADC3ConvertedVoltage = 0;
 
 int main()
 {
@@ -679,53 +684,71 @@ int main()
 	int i;
 	struct list *list;
 	struct task_control_block *task;
-	int timeup;
-	unsigned int tick_count = 0;
+        int timeup;
+        unsigned int tick_count = 0;
+        char digit[100];
 
-	SysTick_Config(configCPU_CLOCK_HZ / configTICK_RATE_HZ);
 
-	init_rs232();
+        //SysTick_Config(configCPU_CLOCK_HZ / configTICK_RATE_HZ);
+        init_rs232();
+
+        ADC3_CH13_DMA_Config();
+
+        /* Start ADC3 Software Conversion */
+        ADC_SoftwareStartConv(ADC3);
+
+        while (1)
+        {
+            /* convert the ADC value (from 0 to 0xFFF) to a voltage value (from 0V to 3.0V)*/ 
+            uwADC3ConvertedVoltage = uhADC3ConvertedValue *3000/0xFFF;
+            /* Display ADCs converted values on LCD */
+            uwADC3ConvertedVoltage = uwADC3ConvertedVoltage; 
+            itoa(uwADC3ConvertedVoltage, digit, 10);
+            USART1_puts(digit);
+            USART1_puts("\n");
+        }
+
 
         /*
-        while(1)
-        {   
-            while(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET);
-            char t = USART_ReceiveData(USART1);
+           while(1)
+           {   
+           while(USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET);
+           char t = USART_ReceiveData(USART1);
 
-            if ((t == '\r')) {
-                while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
-                USART_SendData(USART1, t); 
-                t = '\n';
-            }   
-            while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
-            USART_SendData(USART1, t); 
-        }   
-        */
-	__enable_irq();
+           if ((t == '\r')) {
+           while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+           USART_SendData(USART1, t); 
+           t = '\n';
+           }   
+           while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+           USART_SendData(USART1, t); 
+           }   
+           */
+        __enable_irq();
 
-    /* Initialize memory pool */
-    memory_pool_init(&memory_pool, MEM_LIMIT, memory_space);
+        /* Initialize memory pool */
+        memory_pool_init(&memory_pool, MEM_LIMIT, memory_space);
 
-	/* Initialize all files */
-	for (i = 0; i < FILE_LIMIT; i++)
-		files[i] = NULL;
+        /* Initialize all files */
+        for (i = 0; i < FILE_LIMIT; i++)
+            files[i] = NULL;
 
-	/* Initialize ready lists */
-	for (i = 0; i <= PRIORITY_LIMIT; i++)
-		list_init(&ready_list[i]);
+        /* Initialize ready lists */
+        for (i = 0; i <= PRIORITY_LIMIT; i++)
+            list_init(&ready_list[i]);
 
-    /* Initialise event monitor */
-    event_monitor_init(&event_monitor, events, ready_list);
+        /* Initialise event monitor */
+        event_monitor_init(&event_monitor, events, ready_list);
 
-	/* Initialize fifos */
-	for (i = 0; i <= PATHSERVER_FD; i++)
-		file_mknod(i, -1, files, S_IFIFO, &memory_pool, &event_monitor);
+        /* Initialize fifos */
+        for (i = 0; i <= PATHSERVER_FD; i++)
+            file_mknod(i, -1, files, S_IFIFO, &memory_pool, &event_monitor);
 
-    /* Register IRQ events, see INTR_LIMIT */
-	for (i = -15; i < INTR_LIMIT - 15; i++)
-	    event_monitor_register(&event_monitor, INTR_EVENT(i), intr_release, 0);
+        /* Register IRQ events, see INTR_LIMIT */
+        for (i = -15; i < INTR_LIMIT - 15; i++)
+            event_monitor_register(&event_monitor, INTR_EVENT(i), intr_release, 0);
 
-	event_monitor_register(&event_monitor, TIME_EVENT, time_release, &tick_count);
+        event_monitor_register(&event_monitor, TIME_EVENT, time_release, &tick_count);
 
         /* Initialize first thread */
         tasks[task_count].stack = (void*)init_task(stacks[task_count], &first);
@@ -926,4 +949,72 @@ int main()
         }
 
         return 0;
+}
+
+void ADC3_CH13_DMA_Config(void)
+{
+
+    ADC_InitTypeDef       ADC_InitStructure;
+    ADC_CommonInitTypeDef ADC_CommonInitStructure;
+    DMA_InitTypeDef       DMA_InitStructure;
+    GPIO_InitTypeDef      GPIO_InitStructure;
+
+    /* Enable ADC3, DMA2 and GPIO clocks ****************************************/
+
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2 | RCC_AHB1Periph_GPIOC, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
+
+    /* DMA2 Stream0 channel2 configuration **************************************/
+    DMA_InitStructure.DMA_Channel = DMA_Channel_2;  
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)ADC3_DR_ADDRESS;
+    DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&uhADC3ConvertedValue;
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+    DMA_InitStructure.DMA_BufferSize = 1;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;         
+    DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
+    DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+    DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+    DMA_Init(DMA2_Stream0, &DMA_InitStructure);
+    DMA_Cmd(DMA2_Stream0, ENABLE);
+
+    /* Configure ADC3 Channel13 pin as analog input ******************************/
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    /* ADC Common Init **********************************************************/
+    ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
+    ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
+    ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+    ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+    ADC_CommonInit(&ADC_CommonInitStructure);
+
+    /* ADC3 Init ****************************************************************/
+    ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+    ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+    ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+    ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+    ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1; 
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+    ADC_InitStructure.ADC_NbrOfConversion = 1;
+    ADC_Init(ADC3, &ADC_InitStructure);
+
+    /* ADC3 regular channel13 configuration *************************************/
+    ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 1, ADC_SampleTime_3Cycles);
+
+    /* Enable DMA request after last transfer (Single-ADC mode) */
+    ADC_DMARequestAfterLastTransferCmd(ADC3, ENABLE);
+
+    /* Enable ADC3 DMA */
+    ADC_DMACmd(ADC3, ENABLE);
+
+    /* Enable ADC3 */
+    ADC_Cmd(ADC3, ENABLE);
 }
